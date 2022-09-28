@@ -1,0 +1,6 @@
+.pdm.toml
+__pycache__/
+lib/
+test_loc/
+config/
+*.log
