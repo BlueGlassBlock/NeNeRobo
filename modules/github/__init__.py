@@ -10,7 +10,7 @@ from graia.saya.builtins.broadcast import ListenerSchema
 from kayaku import ConfigModel
 from launart import Launart
 
-from .renderer import issue_to_image
+from .render import link_to_image
 from .service import GitHub
 
 channel = Channel.current()
@@ -46,13 +46,21 @@ async def render(
     repo_chain: Annotated[MessageChain, RegexGroup("repo")],
     issue_number: Annotated[MessageChain, RegexGroup("number")],
 ):
-    owner, repo = owner_chain.display, repo_chain.display
-    number: int = int(issue_number.display)
+    owner, repo, number = owner_chain.display, repo_chain.display, issue_number.display
     gh = Launart.current().get_interface(GitHub)
     try:
-        issue = (await gh.rest.issues.async_get(owner, repo, number)).parsed_data
-        return await app.send_message(
-            ev, Image(data_bytes=await issue_to_image(issue)), quote=ev.source
-        )
+        await gh.rest.issues.async_get(owner, repo, int(number))
     except Exception as e:
-        return await app.send_message(ev, repr(e), quote=ev.source)
+        return await app.send_message(ev, f"验证 Issue 失败：{repr(e)}", quote=ev.source)
+    try:
+        return await app.send_message(
+            ev,
+            Image(
+                data_bytes=await link_to_image(
+                    f"https://github.com/{owner}/{repo}/issues/{number}"
+                )
+            ),
+            quote=ev.source,
+        )
+    except TimeoutError:
+        return await app.send_message(ev, "Timeout in 80000ms!", quote=ev.source)
