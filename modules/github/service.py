@@ -3,10 +3,11 @@ import base64
 import shutil
 from collections import deque
 from pathlib import Path
-from typing import Coroutine
+from typing import Coroutine, TypeVar
 
+from githubkit import BaseAuthStrategy
 from githubkit import GitHub as BaseGitHub
-from githubkit import TokenAuthStrategy
+from githubkit import TokenAuthStrategy, UnauthAuthStrategy
 from graia.saya import Channel
 from kayaku import create
 from launart import ExportInterface, Launart, Service
@@ -16,14 +17,16 @@ from rich.progress import Progress
 
 channel = Channel.current()
 
+A = TypeVar("A", bound=BaseAuthStrategy)
 
-class GitHub(BaseGitHub, ExportInterface):
+
+class GitHub(BaseGitHub[A], ExportInterface):
     ...
 
 
 class GitHubService(Service):
     id = "service.github"
-    instance: GitHub
+    instance: GitHub[TokenAuthStrategy | UnauthAuthStrategy]
     supported_interface_types = {GitHub}
 
     @property
@@ -81,7 +84,7 @@ class GitHubService(Service):
         """Download templates.
         Source: https://github.com/cscs181/QQ-GitHub-Bot/tree/master/src/plugins/github/libs/renderer/templates
         """
-        base_path = Path(__file__, "..", "templates").resolve()
+        base_path = Path(__file__, "..", "renderer", "templates").resolve()
         base_path.mkdir(parents=True, exist_ok=True)
         owner, repo = "cscs181", "QQ-GitHub-Bot"
         git = self.instance.rest.git
@@ -123,7 +126,11 @@ class GitHubService(Service):
 
         async with self.stage("preparing"):
             # Download templates on call
-            self.instance = GitHub(auth=TokenAuthStrategy(create(Credential).token))
+            credential = create(Credential)
+            self.instance = GitHub(
+                auth=TokenAuthStrategy(credential.token) if credential.token else None
+            )
+            logger.info(f"Using auth strategy: {self.instance.auth.__class__.__name__}")
             await self.instance.__aenter__()
             logger.info(
                 "Downloading GitHub render templates...",

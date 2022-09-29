@@ -12,6 +12,11 @@ dependencies = [
     "prisma-client>=0.2.1",
     "graiax-playwright>=0.2.0.post1",
     "rich>=12.5.1",
+    "jinja2>=3.1.2",
+    "mdit-py-emoji>=0.1.0",
+    "humanize>=4.4.0",
+    "unidiff>=0.7.4",
+    "markdown-it-py[linkify,plugins]>=2.1.0",
 ]
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0"}
