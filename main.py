@@ -20,16 +20,15 @@ class Credential(ConfigModel, domain="account.credential"):
 
 
 if __name__ == "__main__":
-    logger.add("./logs/{time: YYYY-MM-DD}.log", rotation="00:00", encoding="utf-8")
     saya = creart.it(Saya)
     manager = Launart()
     manager.add_launchable(PlaywrightService())
     saya.install_behaviours(LaunartBehaviour(manager), creart.it(CommanderBehaviour))
     Ariadne.config(
         launch_manager=manager,
-        install_log=RichLogInstallOptions(rich_traceback=True),
         inject_bypass_listener=True,
     )
+    logger.add("./logs/{time: YYYY-MM-DD}.log", rotation="00:00", encoding="utf-8")
     with saya.module_context():
         for module_info in pkgutil.iter_modules(["modules"]):
             saya.require(f"modules.{module_info.name}")

@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "graia-ariadne"
-version = "0.9.4"
+version = "0.9.5"
 requires_python = ">=3.8,<4.0"
 summary = "Another elegant Python QQ Bot framework for mirai and mirai-api-http v2."
 dependencies = [
@@ -163,12 +163,12 @@ dependencies = [
 
 [[package]]
 name = "graia-ariadne"
-version = "0.9.4"
+version = "0.9.5"
 extras = ["standard"]
 requires_python = ">=3.8,<4.0"
 summary = "Another elegant Python QQ Bot framework for mirai and mirai-api-http v2."
 dependencies = [
-    "graia-ariadne==0.9.4",
+    "graia-ariadne==0.9.5",
     "graia-saya~=0.0",
     "graia-scheduler~=0.0",
     "richuru~=0.1",
@@ -844,9 +844,9 @@ content_hash = "sha256:5c9246162e824730b40e2048d6a6c9c8c405e04959303c259f7fc6581
     {url = "https://pypi.tuna.tsinghua.edu.cn/packages/4f/0d/434bae97145de0e5bda33e4757c5def19e034fdb12a32ea2dd7d0d4d1c70/graia_amnesia-0.6.0-py3-none-any.whl", hash = "sha256:c1e347171cd42d81b10dea4fb6afef4bed4e836fa9c698ecf595ccaa5c2d1939"},
     {url = "https://pypi.tuna.tsinghua.edu.cn/packages/e4/17/23accd9a4466a7cebc4cd6f74821197ad1e74b23cd5395acee7ccd19ce1f/graia-amnesia-0.6.0.tar.gz", hash = "sha256:9f4ed226ebd2ccfe5e09489e4afffd9e58ae28c3fa93211dda72c3c6b9a439f0"},
 ]
-"graia-ariadne 0.9.4" = [
-    {url = "https://pypi.tuna.tsinghua.edu.cn/packages/40/7a/c07a7f1abd8edd8a82742dbc9e4bce59ee0369807bf7a5ac2b129f1c6820/graia-ariadne-0.9.4.tar.gz", hash = "sha256:a9a4bcdd3a1fb6f5ccd0024b3f6120449b4b7e434fd90a28ae63bc4367280a9c"},
-    {url = "https://pypi.tuna.tsinghua.edu.cn/packages/f6/df/707ce3560cbf093d748640464dd04926bda134868d87d893d8fbcb2d2ce0/graia_ariadne-0.9.4-py3-none-any.whl", hash = "sha256:5c87d60da11c42aad32d3d70100c646e91af1b6911c14b657dd88688290fb082"},
+"graia-ariadne 0.9.5" = [
+    {url = "https://pypi.tuna.tsinghua.edu.cn/packages/53/96/ee681190c3ce761ab3d333181d0c8980fa5d608c5ccbf4f25bfcefa4181d/graia_ariadne-0.9.5-py3-none-any.whl", hash = "sha256:c1b96f6213c54f8004e1ea853fed8ce9dfc4802f42c04ea87e080886ae0d70eb"},
+    {url = "https://pypi.tuna.tsinghua.edu.cn/packages/8e/b9/d1717e79708b51b7e324e1827d74161898ae18bc1dc050e209aab52a88f9/graia-ariadne-0.9.5.tar.gz", hash = "sha256:7e01a5e060bbb3aa583311fa433b90fa094b78c506175867da47ec030e6612b7"},
 ]
 "graia-broadcast 0.18.2" = [
     {url = "https://pypi.tuna.tsinghua.edu.cn/packages/0b/14/e155d41933b6069a0ea85dd04aca5660cdf156aee4bd8b44117b9be751a1/graia_broadcast-0.18.2-py3-none-any.whl", hash = "sha256:dcb712dc5be29419c4b65dc649c4e7c795c834fb810682f6131b313d6bd3e740"},

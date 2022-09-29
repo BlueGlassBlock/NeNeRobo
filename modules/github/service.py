@@ -97,6 +97,7 @@ class GitHubService(Service):
             if commit_sha == file_sha:
                 logger.success(f"Already downloaded repository at Commit({file_sha}).")
                 return
+        logger.info(f"Updating to Commit({commit_sha}).")
         # Fetch using git tree API
         segments = "src/plugins/github/libs/renderer/templates".split("/")
         data = (await git.async_get_tree(owner, repo, commit_sha)).parsed_data
@@ -112,6 +113,7 @@ class GitHubService(Service):
             if data.sha == file_sha:
                 logger.success(f"Already downloaded templates tree at SHA({file_sha}).")
                 return
+        logger.info(f"Updating to template SHA({data.sha}).")
         logger.warning("Deleting template directory for a clean download.")
         shutil.rmtree(base_path)
         base_path.mkdir(parents=True, exist_ok=True)
