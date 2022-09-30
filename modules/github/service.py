@@ -1,19 +1,13 @@
-import asyncio
-import base64
-import shutil
-from collections import deque
-from pathlib import Path
-from typing import Coroutine, TypeVar
+from typing import TypeVar
 
 from githubkit import BaseAuthStrategy
 from githubkit import GitHub as BaseGitHub
-from githubkit import TokenAuthStrategy, UnauthAuthStrategy
+from githubkit import OAuthAppAuthStrategy
 from graia.saya import Channel
 from kayaku import create
-from launart import ExportInterface, Launart, Service
+from launart import ExportInterface, Service
 from launart.saya import LaunchableSchema
 from loguru import logger
-from rich.progress import Progress
 
 channel = Channel.current()
 
@@ -26,7 +20,7 @@ class GitHub(BaseGitHub[A], ExportInterface):
 
 class GitHubService(Service):
     id = "service.github"
-    instance: GitHub[TokenAuthStrategy | UnauthAuthStrategy]
+    instance: GitHub
     supported_interface_types = {GitHub}
 
     @property
@@ -44,10 +38,9 @@ class GitHubService(Service):
         from . import Credential
 
         async with self.stage("preparing"):
-            # Download templates on call
             credential = create(Credential)
             self.instance = GitHub(
-                auth=TokenAuthStrategy(credential.token) if credential.token else None
+                auth=OAuthAppAuthStrategy(credential.client_id, credential.client_id)
             )
             logger.info(f"Using auth strategy: {self.instance.auth.__class__.__name__}")
             await self.instance.__aenter__()

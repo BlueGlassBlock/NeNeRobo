@@ -6,12 +6,13 @@ import kayaku
 from graia.ariadne.connection.config import ConfigTypedDict, from_obj
 from graia.ariadne.entry import Ariadne
 from graia.ariadne.message.commander.saya import CommanderBehaviour
-from graia.ariadne.util import RichLogInstallOptions
-from graia.saya import Saya
+from graia.saya import Channel, Saya
 from graiax.playwright import PlaywrightService
 from kayaku import ConfigModel, create
 from launart import Launart, LaunartBehaviour
 from loguru import logger
+
+from library.injector import inject
 
 
 class Credential(ConfigModel, domain="account.credential"):
@@ -31,7 +32,9 @@ if __name__ == "__main__":
     logger.add("./logs/{time: YYYY-MM-DD}.log", rotation="00:00", encoding="utf-8")
     with saya.module_context():
         for module_info in pkgutil.iter_modules(["modules"]):
-            saya.require(f"modules.{module_info.name}")
+            channel = saya.require(f"modules.{module_info.name}")
+            if isinstance(channel, Channel):
+                inject(channel)
     kayaku.initialize(
         {
             "{**}": "./config/{**}:",

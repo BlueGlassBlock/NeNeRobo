@@ -1,0 +1,15 @@
+datasource db {
+    provider = "sqlite"
+    url      = "file:./tokens.db"
+}
+
+generator db {
+    provider  = "prisma-client-py"
+    interface = "asyncio"
+}
+
+model Post {
+    qq_id        BigInt @id
+    id           BigInt
+    access_token String
+}

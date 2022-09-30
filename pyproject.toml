@@ -9,7 +9,6 @@ dependencies = [
     "graia-ariadne[standard]<0.11.0,>=0.9.4",
     "kayaku<0.5.0,>=0.4.0rc2",
     "githubkit>=0.8.0",
-    "prisma-client>=0.2.1",
     "graiax-playwright>=0.2.0.post1",
     "rich>=12.5.1",
     "jinja2>=3.1.2",
@@ -17,6 +16,8 @@ dependencies = [
     "humanize>=4.4.0",
     "unidiff>=0.7.4",
     "markdown-it-py[linkify,plugins]>=2.1.0",
+    "msgspec>=0.9.0",
+    "prisma>=0.6.6",
 ]
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0"}
