@@ -1,6 +1,7 @@
 import secrets
 from typing import Annotated
 
+from githubkit.rest.models import Event
 from graia.amnesia.builtins.aiohttp import AiohttpClientInterface
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import FriendMessage, GroupMessage
@@ -11,8 +12,9 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
 from graia.scheduler.saya import SchedulerSchema
 from graia.scheduler.timers import every_minute
-from kayaku import ConfigModel
+from kayaku import ConfigModel, create
 from launart import Launart
+from loguru import logger
 
 from .render import link_to_image
 from .service import GitHub
@@ -21,10 +23,13 @@ channel = Channel.current()
 
 
 class Credential(ConfigModel, domain="github.credential"):
-    client_id: str
-    """OAuth Client ID"""
-    client_secret: str
-    """OAuth Client Secret"""
+    token: str
+    """Personal Access Token"""
+
+
+class Monitor(ConfigModel, domain="github.monitor"):
+    orgs: list[str]
+    """List of Organizations that you want to monitor."""
 
 
 @channel.use(
@@ -107,5 +112,15 @@ async def render_open_graph(
 
 @channel.use(SchedulerSchema(every_minute()))
 async def update_stat():
-    # Poll GraiaProject + GraiaCommunity events
-    ...
+    errors: list[tuple[Exception, str]] = []
+    gh = Launart.current().get_interface(GitHub)
+    for org_name in create(Monitor).orgs:
+        try:
+            events: list[Event] = (
+                await gh.rest.activity.async_list_public_org_events(org_name)
+            ).parsed_data
+        except Exception as e:
+            errors.append((e, org_name))
+        else:  # Format Events
+            for ev in events:
+                logger.info(ev)  # TODO: Template + Render

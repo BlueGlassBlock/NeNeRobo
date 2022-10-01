@@ -1,8 +1,6 @@
 from graiax.playwright import PlaywrightBrowser
 from launart import Launart
 
-import prisma_cleanup
-
 
 async def link_to_image(gh_link: str) -> bytes:
     browser = Launart.current().get_interface(PlaywrightBrowser)

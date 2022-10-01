@@ -1,8 +1,5 @@
-from typing import TypeVar
-
-from githubkit import BaseAuthStrategy
 from githubkit import GitHub as BaseGitHub
-from githubkit import OAuthAppAuthStrategy
+from githubkit import TokenAuthStrategy
 from graia.saya import Channel
 from kayaku import create
 from launart import ExportInterface, Service
@@ -11,10 +8,8 @@ from loguru import logger
 
 channel = Channel.current()
 
-A = TypeVar("A", bound=BaseAuthStrategy)
 
-
-class GitHub(BaseGitHub[A], ExportInterface):
+class GitHub(BaseGitHub[TokenAuthStrategy], ExportInterface):
     ...
 
 
@@ -39,9 +34,7 @@ class GitHubService(Service):
 
         async with self.stage("preparing"):
             credential = create(Credential)
-            self.instance = GitHub(
-                auth=OAuthAppAuthStrategy(credential.client_id, credential.client_id)
-            )
+            self.instance = GitHub(auth=TokenAuthStrategy(credential.token))
             logger.info(f"Using auth strategy: {self.instance.auth.__class__.__name__}")
             await self.instance.__aenter__()
 
