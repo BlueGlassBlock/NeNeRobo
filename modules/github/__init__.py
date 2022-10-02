@@ -1,7 +1,6 @@
 import secrets
 from typing import Annotated
 
-from githubkit.rest.models import Event
 from graia.amnesia.builtins.aiohttp import AiohttpClientInterface
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import FriendMessage, GroupMessage
@@ -11,12 +10,12 @@ from graia.ariadne.message.parser.base import MatchRegex, RegexGroup
 from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
 from graia.scheduler.saya import SchedulerSchema
-from graia.scheduler.timers import every_minute
+from graia.scheduler.timers import every_custom_seconds
 from kayaku import ConfigModel, create
 from launart import Launart
 from loguru import logger
 
-from .render import link_to_image
+from .render import format_event, link_to_image
 from .service import GitHub
 
 channel = Channel.current()
@@ -27,9 +26,11 @@ class Credential(ConfigModel, domain="github.credential"):
     """Personal Access Token"""
 
 
-class Monitor(ConfigModel, domain="github.monitor"):
-    orgs: list[str]
-    """List of Organizations that you want to monitor."""
+class OrgMonitor(ConfigModel, domain="github.monitor.orgs"):
+    orgs: set[str]
+    """Set of Organizations that you want to monitor."""
+    groups: set[int]
+    """Target groups"""
 
 
 @channel.use(
@@ -110,17 +111,14 @@ async def render_open_graph(
         return await app.send_message(ev, f"拉取 OpenGraph 失败：{repr(e)}", quote=ev.source)
 
 
-@channel.use(SchedulerSchema(every_minute()))
-async def update_stat():
-    errors: list[tuple[Exception, str]] = []
-    gh = Launart.current().get_interface(GitHub)
-    for org_name in create(Monitor).orgs:
-        try:
-            events: list[Event] = (
-                await gh.rest.activity.async_list_public_org_events(org_name)
-            ).parsed_data
-        except Exception as e:
-            errors.append((e, org_name))
-        else:  # Format Events
-            for ev in events:
-                logger.info(ev)  # TODO: Template + Render
+@channel.use(SchedulerSchema(every_custom_seconds(5)))
+async def update_stat(app: Ariadne):
+    gh = app.launch_manager.get_interface(GitHub)
+    groups: set[int] = create(OrgMonitor).groups
+    for events in gh.polls.values():
+        while events and (ev := events.popleft()):
+            # TODO: Render events
+            logger.debug(repr(ev))
+            if formatted := format_event(ev):
+                for g in groups:
+                    await app.send_group_message(g, formatted)
