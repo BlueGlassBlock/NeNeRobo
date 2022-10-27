@@ -1,3 +1,4 @@
+from dataclasses import field
 import secrets
 from typing import Annotated
 
@@ -11,7 +12,7 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
 from graia.scheduler.saya import SchedulerSchema
 from graia.scheduler.timers import every_custom_seconds
-from kayaku import ConfigModel, create
+from kayaku import config, create
 from launart import Launart
 from loguru import logger
 
@@ -21,15 +22,19 @@ from .service import GitHub
 channel = Channel.current()
 
 
-class Credential(ConfigModel, domain="github.credential"):
+@config("github.credential")
+class MasterCredential:
+    client_id: str
+    """OAuth Device Client ID, for users to authenticate and act on their behalf."""
     token: str
-    """Personal Access Token"""
+    """Personal Access Token, for basic fetch and poll task."""
 
 
-class OrgMonitor(ConfigModel, domain="github.monitor.orgs"):
-    orgs: set[str]
+@config("github.orgs.monitor")
+class OrgMonitor:
+    orgs: list[str] = field(default_factory=list)
     """Set of Organizations that you want to monitor."""
-    groups: set[int]
+    groups: list[int] = field(default_factory=list)
     """Target groups"""
 
 
@@ -57,9 +62,9 @@ async def render_link(
     owner_chain: Annotated[MessageChain, RegexGroup("owner")],
     repo_chain: Annotated[MessageChain, RegexGroup("repo")],
     issue_number: Annotated[MessageChain, RegexGroup("number")],
+    gh: GitHub,
 ):
     owner, repo, number = owner_chain.display, repo_chain.display, issue_number.display
-    gh = Launart.current().get_interface(GitHub)
     try:
         await gh.rest.issues.async_get(owner, repo, int(number))
     except Exception as e:
@@ -91,9 +96,9 @@ async def render_open_graph(
     ev: GroupMessage | FriendMessage,
     owner_chain: Annotated[MessageChain, RegexGroup("owner")],
     repo_chain: Annotated[MessageChain, RegexGroup("repo")],
+    client: AiohttpClientInterface,
 ):
     owner, repo = owner_chain.display, repo_chain.display
-    client = Launart.current().get_interface(AiohttpClientInterface)
     try:
         pic = (
             await (
@@ -114,7 +119,7 @@ async def render_open_graph(
 @channel.use(SchedulerSchema(every_custom_seconds(5)))
 async def update_stat(app: Ariadne):
     gh = app.launch_manager.get_interface(GitHub)
-    groups: set[int] = create(OrgMonitor).groups
+    groups: list[int] = create(OrgMonitor).groups
     for events in gh.polls.values():
         while events and (ev := events.popleft()):
             # TODO: Render events

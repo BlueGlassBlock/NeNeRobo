@@ -21,7 +21,9 @@ channel = Channel.current()
 
 class GitHub(BaseGitHub[TokenAuthStrategy], ExportInterface):
     def __init__(
-        self, auth: TokenAuthStrategy, polls: dict[str, deque[Event]] | None = None
+        self,
+        auth: TokenAuthStrategy,
+        polls: dict[str, deque[Event]] | None = None,
     ):
         super().__init__(auth)
         self.polls: dict[str, deque[Event]] = polls if polls is not None else {}
@@ -80,10 +82,10 @@ class GitHubService(Service):
     async def launch(self, _):
         self.polls = {}
         self.tasks = set()
-        from . import Credential, OrgMonitor
+        from . import MasterCredential, OrgMonitor
 
         async with self.stage("preparing"):
-            credential = create(Credential)
+            credential = create(MasterCredential)
             self.instance = GitHub(
                 auth=TokenAuthStrategy(credential.token), polls=self.polls
             )

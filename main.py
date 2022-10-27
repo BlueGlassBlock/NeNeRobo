@@ -1,27 +1,28 @@
 import pkgutil
-from typing import List
-
+from dataclasses import field
 import creart
 import kayaku
-from graia.ariadne.connection.config import ConfigTypedDict, from_obj
+from graia.ariadne.connection.config import from_obj
 from graia.ariadne.entry import Ariadne
 from graia.ariadne.message.commander.saya import CommanderBehaviour
-from graia.saya import Channel, Saya
+from graia.saya import Saya
+from graia.broadcast import Broadcast
 from graiax.playwright import PlaywrightService
-from kayaku import ConfigModel, create
+from kayaku import config, create, save_all
 from launart import Launart, LaunartBehaviour
 from loguru import logger
-
-from library.injector import inject
-
-
-class Credential(ConfigModel, domain="account.credential"):
-    accounts: List[ConfigTypedDict] = []
-    """List of Accounts."""
-
+from library.dispatcher import LaunartDispatcher
 
 if __name__ == "__main__":
+    kayaku.initialize(
+        {
+            "{**}": "./config/{**}",
+            "{**}.credential": "./config/credential.jsonc::{**}",
+        }
+    )
     saya = creart.it(Saya)
+    bcc = creart.it(Broadcast)
+    bcc.prelude_dispatchers.append(LaunartDispatcher)
     manager = Launart()
     manager.add_launchable(PlaywrightService())
     saya.install_behaviours(LaunartBehaviour(manager), creart.it(CommanderBehaviour))
@@ -33,17 +34,15 @@ if __name__ == "__main__":
     with saya.module_context():
         for module_info in pkgutil.iter_modules(["modules"]):
             channel = saya.require(f"modules.{module_info.name}")
-            if isinstance(channel, Channel):
-                inject(channel)
-    kayaku.initialize(
-        {
-            "{**}": "./config/{**}:",
-            "{**}.credential": "./config/credential.jsonc:{**}",
-        }
-    )
+
+    @config("account.credential")
+    class Credential:
+        accounts: list = field(default_factory=list)
+        """List of Accounts."""
 
     cfg = create(Credential)
     if not cfg.accounts:
         raise ValueError("No account configured.")
     from_obj(cfg.accounts)
     Ariadne.launch_blocking()
+    save_all()
