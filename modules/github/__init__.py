@@ -1,5 +1,5 @@
-from dataclasses import field
 import secrets
+from dataclasses import field
 from typing import Annotated
 
 from graia.amnesia.builtins.aiohttp import AiohttpClientInterface

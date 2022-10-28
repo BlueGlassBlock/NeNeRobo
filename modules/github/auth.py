@@ -1,15 +1,16 @@
 import contextlib
 from pathlib import Path
+
+import msgspec
+from githubkit import GitHub, TokenAuthStrategy
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import FriendMessage
 from graia.ariadne.message.parser.base import MatchContent
-from graiax.shortcut import listen, decorate, FunctionWaiter
 from graia.ariadne.util.validator import CertainFriend
-from kayaku import create
-from githubkit import GitHub, TokenAuthStrategy
-from msgspec.msgpack import encode, decode
-import msgspec
+from graiax.shortcut import FunctionWaiter, decorate, listen
 from httpx import AsyncClient
+from kayaku import create
+from msgspec.msgpack import decode, encode
 
 DB = Path(__file__) / "tokens.db"
 
