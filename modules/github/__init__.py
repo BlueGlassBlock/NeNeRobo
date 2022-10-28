@@ -13,7 +13,6 @@ from graia.saya.builtins.broadcast import ListenerSchema
 from graia.scheduler.saya import SchedulerSchema
 from graia.scheduler.timers import every_custom_seconds
 from kayaku import config, create
-from launart import Launart
 from loguru import logger
 
 from .render import format_event, link_to_image
@@ -43,7 +42,8 @@ class OrgMonitor:
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)/(issues|pull)/(?P<number>\d+)"
+                r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)/(issues|pull)/(?P<number>\d+)",
+                full=True,
             )
         ],
     )
@@ -52,7 +52,7 @@ class OrgMonitor:
     ListenerSchema(
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
-            MatchRegex(r"^(?P<owner>[^/]+)/(?P<repo>[^/]+)#(?P<number>\d+)$")
+            MatchRegex(r"(?P<owner>[^/]+)/(?P<repo>[^/]+)#(?P<number>\d+)", full=True),
         ],
     )
 )
@@ -87,7 +87,10 @@ async def render_link(
     ListenerSchema(
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
-            MatchRegex(r"^((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)$")
+            MatchRegex(
+                r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)",
+                full=True,
+            )
         ],
     )
 )

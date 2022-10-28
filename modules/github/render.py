@@ -1,7 +1,4 @@
-from typing import Any
-
 from githubkit.rest.models import Event
-from githubkit.utils import UNSET
 from graiax.playwright import PlaywrightBrowser
 from launart import Launart
 
@@ -23,7 +20,7 @@ async def link_to_image(gh_link: str) -> bytes:
             document.getElementsByClassName('Layout--flowRow-until-md')[0].classList.remove('Layout');
             """
         )
-        return await page.screenshot(full_page=True)
+        return await page.screenshot(full_page=True, type="jpeg")
 
 
 def format_event(event: Event) -> str | None:

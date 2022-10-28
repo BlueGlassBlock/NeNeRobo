@@ -22,7 +22,7 @@ if __name__ == "__main__":
     )
     saya = creart.it(Saya)
     bcc = creart.it(Broadcast)
-    bcc.prelude_dispatchers.append(LaunartDispatcher)
+    bcc.prelude_dispatchers.append(LaunartDispatcher())
     manager = Launart()
     manager.add_launchable(PlaywrightService())
     saya.install_behaviours(LaunartBehaviour(manager), creart.it(CommanderBehaviour))
