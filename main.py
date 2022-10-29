@@ -9,10 +9,10 @@ from graia.ariadne.message.commander.saya import CommanderBehaviour
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from graiax.playwright import PlaywrightService
-from kayaku import config, create, save_all
+from kayaku import config, create, save_all, bootstrap
 from launart import Launart, LaunartBehaviour
 from loguru import logger
-
+import atexit
 from library.dispatcher import LaunartDispatcher
 
 if __name__ == "__main__":
@@ -22,6 +22,7 @@ if __name__ == "__main__":
             "{**}.credential": "./config/credential.jsonc::{**}",
         }
     )
+    atexit.register(save_all)
     saya = creart.it(Saya)
     bcc = creart.it(Broadcast)
     bcc.prelude_dispatchers.append(LaunartDispatcher())
@@ -42,9 +43,10 @@ if __name__ == "__main__":
         accounts: list = field(default_factory=list)
         """List of Accounts."""
 
+    bootstrap()
+
     cfg = create(Credential)
     if not cfg.accounts:
         raise ValueError("No account configured.")
     from_obj(cfg.accounts)
     Ariadne.launch_blocking()
-    save_all()

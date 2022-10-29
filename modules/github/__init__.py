@@ -42,7 +42,7 @@ class OrgMonitor:
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)/(issues|pull)/(?P<number>\d+)",
+                r"((https?://)?github\.com/)?(?P<owner>[\w\.@\:/\-~]+)/(?P<repo>[\w\.@\:/\-~]+)/(issues|pull)/(?P<number>\d+)",
                 full=True,
             )
         ],
@@ -52,7 +52,10 @@ class OrgMonitor:
     ListenerSchema(
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
-            MatchRegex(r"(?P<owner>[^/]+)/(?P<repo>[^/]+)#(?P<number>\d+)", full=True),
+            MatchRegex(
+                r"(?P<owner>[\w\.@\:/\-~]+)/(?P<repo>[\w\.@\:/\-~]+)#(?P<number>\d+)",
+                full=True,
+            ),
         ],
     )
 )
@@ -88,7 +91,7 @@ async def render_link(
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"((https?://)?github\.com/)?(?P<owner>[^/]+)/(?P<repo>[^/]+)",
+                r"((https?://)?github\.com/)?(?P<owner>[\w\.@\:/\-~]+)/(?P<repo>[\w\.@\:/\-~]+)",
                 full=True,
             )
         ],
