@@ -37,12 +37,15 @@ class OrgMonitor:
     """Target groups"""
 
 
+WORD = r"[A-Za-z0-9_-]"
+
+
 @channel.use(
     ListenerSchema(
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"((https?://)?github\.com/)?(?P<owner>[A-Za-z\.@\:/\-~]+)/(?P<repo>[A-Za-z\.@\:/\-~]+)/(issues|pull)/(?P<number>\d+)",
+                rf"((https?://)?github\.com/)?(?P<owner>{WORD}+)/(?P<repo>{WORD}+)/(issues|pull)/(?P<number>\d+)",
                 full=True,
             )
         ],
@@ -53,7 +56,7 @@ class OrgMonitor:
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"(?P<owner>[A-Za-z\.@\:/\-~]+)/(?P<repo>[A-Za-z\.@\:/\-~]+)#(?P<number>\d+)",
+                rf"(?P<owner>{WORD}+)/(?P<repo>{WORD}+)#(?P<number>\d+)",
                 full=True,
             ),
         ],
@@ -91,7 +94,7 @@ async def render_link(
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"((https?://)?github\.com/)?(?P<owner>[A-Za-z\.@\:/\-~]+)/(?P<repo>[A-Za-z\.@\:/\-~]+)",
+                rf"((https?://)?github\.com/)?(?P<owner>{WORD}+)/(?P<repo>{WORD}+)",
                 full=True,
             )
         ],
@@ -103,8 +106,13 @@ async def render_open_graph(
     owner_chain: Annotated[MessageChain, RegexGroup("owner")],
     repo_chain: Annotated[MessageChain, RegexGroup("repo")],
     client: AiohttpClientInterface,
+    gh: GitHub,
 ):
     owner, repo = owner_chain.display, repo_chain.display
+    try:
+        await gh.rest.repos.async_get(owner, repo)
+    except Exception as e:
+        return
     try:
         pic = (
             await (
