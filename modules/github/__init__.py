@@ -42,7 +42,7 @@ class OrgMonitor:
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"((https?://)?github\.com/)?(?P<owner>[\w\.@\:/\-~]+)/(?P<repo>[\w\.@\:/\-~]+)/(issues|pull)/(?P<number>\d+)",
+                r"((https?://)?github\.com/)?(?P<owner>[A-Za-z\.@\:/\-~]+)/(?P<repo>[A-Za-z\.@\:/\-~]+)/(issues|pull)/(?P<number>\d+)",
                 full=True,
             )
         ],
@@ -53,7 +53,7 @@ class OrgMonitor:
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"(?P<owner>[\w\.@\:/\-~]+)/(?P<repo>[\w\.@\:/\-~]+)#(?P<number>\d+)",
+                r"(?P<owner>[A-Za-z\.@\:/\-~]+)/(?P<repo>[A-Za-z\.@\:/\-~]+)#(?P<number>\d+)",
                 full=True,
             ),
         ],
@@ -91,7 +91,7 @@ async def render_link(
         [GroupMessage, FriendMessage],
         inline_dispatchers=[
             MatchRegex(
-                r"((https?://)?github\.com/)?(?P<owner>[\w\.@\:/\-~]+)/(?P<repo>[\w\.@\:/\-~]+)",
+                r"((https?://)?github\.com/)?(?P<owner>[A-Za-z\.@\:/\-~]+)/(?P<repo>[A-Za-z\.@\:/\-~]+)",
                 full=True,
             )
         ],
