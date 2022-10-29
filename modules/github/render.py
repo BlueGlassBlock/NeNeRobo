@@ -1,11 +1,10 @@
 from githubkit.rest.models import Event
-from graiax.playwright import PlaywrightBrowser
-from launart import Launart
+
+from library.render import get_page
 
 
 async def link_to_image(gh_link: str) -> bytes:
-    browser = Launart.current().get_interface(PlaywrightBrowser)
-    async with browser.page(viewport={"height": 800, "width": 1000}) as page:
+    async with get_page() as page:
         await page.goto(gh_link, timeout=80000, wait_until="networkidle")
         await page.evaluate(
             """

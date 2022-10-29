@@ -1,10 +1,8 @@
-from graiax.playwright import PlaywrightBrowser
-from launart import Launart
+from library.render import get_page
 
 
 async def PEP_to_image(pep: int) -> bytes:
-    browser = Launart.current().get_interface(PlaywrightBrowser)
-    async with browser.page(viewport={"height": 800, "width": 1000}) as page:
+    async with get_page() as page:
         await page.goto(
             f"https://peps.python.org/pep-{pep}/",
             timeout=5000,
