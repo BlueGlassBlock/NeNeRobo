@@ -1,15 +1,16 @@
-from library.dispatcher import SearchRegex
-from .render import PEP_to_image
-from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import MessageEvent
-from graiax.shortcut import listen, dispatch
+import re
 from typing import Annotated
 
 from graia.ariadne.app import Ariadne
+from graia.ariadne.event.message import MessageEvent
 from graia.ariadne.message.element import Image
 from graia.ariadne.message.exp import MessageChain
 from graia.ariadne.message.parser.base import RegexGroup
-import re
+from graiax.shortcut import dispatch, listen
+
+from library.dispatcher import SearchRegex
+
+from .render import PEP_to_image
 
 
 @listen(MessageEvent)

@@ -1,19 +1,13 @@
-from graia.broadcast.entities.dispatcher import BaseDispatcher
-from graia.broadcast.interfaces.dispatcher import DispatcherInterface
-from launart import Launart, ExportInterface
-from graia.ariadne.message.parser.base import ChainDecorator
 import re
-import re
-from typing import (
-    Optional,
-)
-
-from graia.broadcast.entities.dispatcher import BaseDispatcher
-from graia.broadcast.exceptions import ExecutionStop
-from graia.broadcast.interfaces.dispatcher import DispatcherInterface
+from typing import Optional
 
 from graia.ariadne.event.message import MessageEvent
 from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.parser.base import ChainDecorator
+from graia.broadcast.entities.dispatcher import BaseDispatcher
+from graia.broadcast.exceptions import ExecutionStop
+from graia.broadcast.interfaces.dispatcher import DispatcherInterface
+from launart import ExportInterface, Launart
 
 
 class LaunartDispatcher(BaseDispatcher):
