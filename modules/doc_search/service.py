@@ -20,8 +20,8 @@ class SearchInterface(ExportInterface):
     ...
 
 
-HASH_DB = Path(__file__, "..", "hash.db")
-DB = Path(__file__, "..", "objects.db")
+HASH_DB = Path(__file__, "..", "hash.db").resolve()
+DB = Path(__file__, "..", "objects.db").resolve()
 
 
 @config("search.sphinx")

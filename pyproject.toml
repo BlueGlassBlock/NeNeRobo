@@ -37,3 +37,6 @@ dev = [
     "isort>=5.10.1",
     "lark[regex]>=1.1.2",
 ]
+
+[tool.isort]
+profile = "black"

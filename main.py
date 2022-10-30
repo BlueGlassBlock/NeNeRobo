@@ -1,3 +1,4 @@
+import atexit
 import pkgutil
 from dataclasses import field
 
@@ -9,10 +10,10 @@ from graia.ariadne.message.commander.saya import CommanderBehaviour
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from graiax.playwright import PlaywrightService
-from kayaku import config, create, save_all, bootstrap
+from kayaku import bootstrap, config, create, save_all
 from launart import Launart, LaunartBehaviour
 from loguru import logger
-import atexit
+
 from library.dispatcher import LaunartDispatcher
 
 if __name__ == "__main__":
