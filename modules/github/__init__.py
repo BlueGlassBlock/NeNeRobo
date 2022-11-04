@@ -9,7 +9,7 @@ from graia.amnesia.builtins.aiohttp import AiohttpClientInterface
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import FriendMessage, GroupMessage
 from graia.ariadne.message.element import Image
-from graia.ariadne.message.exp import MessageChain
+from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.parser.base import MatchContent, MatchRegex, RegexGroup
 from graia.ariadne.util.validator import CertainFriend
 from graia.saya import Channel
@@ -140,6 +140,8 @@ async def render_open_graph(
 
 @channel.use(SchedulerSchema(every_custom_seconds(5)))
 async def update_stat(app: Ariadne):
+    if app.launch_manager.status.preparing:
+        return
     gh = app.launch_manager.get_interface(GitHub)
     groups: list[int] = create(OrgMonitor).groups
     for events in gh.polls.values():
