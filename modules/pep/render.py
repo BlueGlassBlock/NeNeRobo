@@ -9,4 +9,4 @@ async def PEP_to_image(pep: int) -> bytes:
             wait_until="networkidle",
         )
         await page.locator("details").evaluate("node => node.open = true")
-        return await page.locator("article").screenshot(type="jpeg")
+        return await page.locator("article").screenshot()

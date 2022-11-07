@@ -13,6 +13,7 @@ from graiax.playwright import PlaywrightService
 from kayaku import bootstrap, config, create, save_all
 from launart import Launart, LaunartBehaviour
 from loguru import logger
+
 from library.dispatcher import LaunartDispatcher
 
 if __name__ == "__main__":
