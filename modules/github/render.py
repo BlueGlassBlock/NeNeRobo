@@ -12,14 +12,35 @@ async def link_to_image(gh_link: str) -> bytes:
             need_remove_cls.forEach( val => {
                 var elem_arr = document.getElementsByClassName(val);
                     if (elem_arr.length){
-                         elem_arr[0].remove();
+                        elem_arr[0].remove();
                     }
                 }
             );
             document.getElementsByClassName('Layout--flowRow-until-md')[0].classList.remove('Layout');
             """
         )
-        return await page.screenshot(full_page=True, type="jpeg")
+        return await page.screenshot(full_page=True)
+
+
+async def files_changed_image(gh_link: str) -> list[bytes]:
+    async with get_page() as page:
+        await page.goto(gh_link, timeout=80000, wait_until="networkidle")
+        await page.evaluate(
+            """
+            var need_remove_cls = ['Layout-sidebar', 'js-header-wrapper', 'footer', 'gh-header-actions', 'discussion-timeline-actions', 'js-repo-nav', 'tabnav'];
+            need_remove_cls.forEach( val => {
+                var elem_arr = document.getElementsByClassName(val);
+                    if (elem_arr.length){
+                        elem_arr[0].remove();
+                    }
+                }
+            );
+            document.getElementsByClassName('Layout--flowRow-until-md')[0].classList.remove('Layout');
+            """
+        )
+        return [
+            await elem.screenshot() for elem in await page.query_selector_all(".file")
+        ]
 
 
 def format_event(event: Event) -> str | None:

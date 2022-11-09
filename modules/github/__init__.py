@@ -1,6 +1,7 @@
 import contextlib
 import secrets
 from dataclasses import field
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -8,10 +9,11 @@ import msgspec
 from graia.amnesia.builtins.aiohttp import AiohttpClientInterface
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import FriendMessage, GroupMessage
-from graia.ariadne.message.element import Image
 from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import At, Forward, ForwardNode, Image, Plain
 from graia.ariadne.message.parser.base import MatchContent, MatchRegex, RegexGroup
-from graia.ariadne.util.validator import CertainFriend
+from graia.ariadne.util.interrupt import AnnotationWaiter, EventWaiter
+from graia.ariadne.util.validator import CertainFriend, Quoting
 from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
 from graia.scheduler.saya import SchedulerSchema
@@ -23,7 +25,7 @@ from loguru import logger
 from msgspec.msgpack import decode, encode
 
 from .auth import SCOPES, DeviceCodeResp, verify_auth
-from .render import format_event, link_to_image
+from .render import files_changed_image, format_event, link_to_image
 from .service import GitHub
 
 channel = Channel.current()
@@ -79,12 +81,16 @@ async def render_link(
     gh: GitHub,
 ):
     owner, repo, number = owner_chain.display, repo_chain.display, issue_number.display
+
     try:
-        await gh.rest.issues.async_get(owner, repo, int(number))
+        issue_prop_pull_request = (
+            await gh.rest.issues.async_get(owner, repo, int(number))
+        ).parsed_data.pull_request
     except Exception as e:
         return await app.send_message(ev, f"验证 Issue 失败：{repr(e)}", quote=ev.source)
+
     try:
-        return await app.send_message(
+        msg = await app.send_message(
             ev,
             Image(
                 data_bytes=await link_to_image(
@@ -95,6 +101,38 @@ async def render_link(
         )
     except TimeoutError:
         return await app.send_message(ev, "Timeout in 80000ms!", quote=ev.source)
+
+    if not issue_prop_pull_request:
+        return
+
+    waiter = AnnotationWaiter(MessageChain, [type(ev)], decorator=Quoting(msg))
+
+    while True:
+        cmd = await waiter.wait(60)
+
+        if cmd is None:
+            return
+        elif str(cmd.include(Plain)).strip() == "diff":
+            break
+
+    try:
+        await app.send_message(
+            ev,
+            Forward(
+                [
+                    ForwardNode(
+                        ev.sender,
+                        datetime.now(),
+                        MessageChain(Image(data_bytes=image)),
+                    )
+                    for image in await files_changed_image(
+                        f"https://github.com/{owner}/{repo}/pull/{number}/files"
+                    )
+                ]
+            ),
+        )
+    except TimeoutError:
+        await app.send_message(ev, "Timeout in 80000ms!", quote=ev.source)
 
 
 @channel.use(
