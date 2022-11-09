@@ -10,9 +10,9 @@ from graia.amnesia.builtins.aiohttp import AiohttpClientInterface
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import FriendMessage, GroupMessage
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At, Forward, ForwardNode, Image
+from graia.ariadne.message.element import At, Forward, ForwardNode, Image, Plain
 from graia.ariadne.message.parser.base import MatchContent, MatchRegex, RegexGroup
-from graia.ariadne.util.interrupt import AnnotationWaiter
+from graia.ariadne.util.interrupt import AnnotationWaiter, EventWaiter
 from graia.ariadne.util.validator import CertainFriend, Quoting
 from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
@@ -90,7 +90,7 @@ async def render_link(
         return await app.send_message(ev, f"验证 Issue 失败：{repr(e)}", quote=ev.source)
 
     try:
-        await app.send_message(
+        msg = await app.send_message(
             ev,
             Image(
                 data_bytes=await link_to_image(
@@ -104,6 +104,16 @@ async def render_link(
 
     if not issue_prop_pull_request:
         return
+
+    waiter = AnnotationWaiter(MessageChain, [type(ev)], decorator=Quoting(msg))
+
+    while True:
+        cmd = await waiter.wait(60)
+
+        if cmd is None:
+            return
+        elif str(cmd.include(Plain)).strip() == "diff":
+            break
 
     try:
         await app.send_message(
