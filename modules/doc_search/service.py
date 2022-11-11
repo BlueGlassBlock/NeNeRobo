@@ -9,19 +9,20 @@ from kayaku import config, create
 from launart import ExportInterface, Service
 from launart.saya import LaunchableSchema
 from loguru import logger
+import aiosqlite
+from aiosqlite import Connection
+from zlib import adler32
 
 channel = Channel.current()
-from yarl import URL
-
-from .process import Database, parse_object
 
 
 class SearchInterface(ExportInterface):
     ...
 
 
-HASH_DB = Path(__file__, "..", "hash.db").resolve()
 DB = Path(__file__, "..", "objects.db").resolve()
+
+DB.touch(exist_ok=True)
 
 
 @config("search.sphinx")
@@ -38,10 +39,11 @@ class SphinxSearchConfig:
 class SphinxSearchService(Service):
     id = "service.search.sphinx"
     supported_interface_types = {SearchInterface}
+    connection: Connection
 
     @property
     def stages(self):
-        return {"preparing"}
+        return {"preparing", "cleanup"}
 
     @property
     def required(self):
@@ -50,29 +52,58 @@ class SphinxSearchService(Service):
     def get_interface(self, _):
         return SearchInterface()
 
+    async def update_objects_data(self, url: str, data: bytes) -> None:
+        file_hash = adler32(data)
+        rows = [
+            q
+            async for q in await self.connection.execute(
+                "SELECT value FROM hashes WHERE uri = ?", (file_hash,)
+            )
+        ]
+        if not rows:
+            await self.connection.execute(
+                "INSERT INTO hashes(uri, value) VALUES (?, ?)",
+                (url, file_hash),
+            )
+        elif rows[0][0] == file_hash:
+            logger.debug(f"{url}'s object data is already up to date, skipping")
+            return
+        logger.debug(f"Creating table for {url}")
+        await self.connection.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS ? USING FTS5(name, domain, role, uri)",
+            (url,),
+        )
+        # TODO
+        logger.debug(f"Updating {url}'s file hash")
+        await self.connection.execute(
+            "UPDATE hashes SET value = ? WHERE uri = ?", (file_hash, url)
+        )
+
     async def launch(self, _):
-        loop = asyncio.get_running_loop()
-        proc_exec = ProcessPoolExecutor(max_workers=4)
         async with self.stage("preparing"):
             conf = create(SphinxSearchConfig)
+            self.connection = aiosqlite.connect(DB, isolation_level=None)
+            await self.connection.__aenter__()
+            await self.connection.execute(
+                "CREATE TABLE IF NOT EXISTS hashes(uri PRIMARY KEY, value);"
+            )
+            await self.connection.execute(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS objects USING FTS5(name, domain, role, uri);"
+            )
             async with AsyncClient() as client:
-                futures: list[asyncio.Future[Database]] = []
                 for url in conf.inventory_urls:
-                    data = (await client.get(url)).content
+                    data = None
+                    while data is None:
+                        try:
+                            data = (await client.get(url)).content
+                        except Exception as e:
+                            logger.error(f"Error fetching {url}: {e!r}, retrying")
+                            await asyncio.sleep(0.5)
                     logger.debug(f"Fetched objects.inv from {url}")
-                    futures.append(
-                        loop.run_in_executor(
-                            proc_exec,
-                            parse_object,
-                            f"{str(URL(url).parent)}/",
-                            data,
-                            conf.domains,
-                        )
-                    )
+                    await self.update_objects_data(url, data)
 
-                if not futures:
-                    return logger.warning("No objects.inv url specified!")
-                await asyncio.wait(futures)
+        async with self.stage("cleanup"):
+            await self.connection.__aexit__(None, None, None)
 
 
 channel.use(LaunchableSchema())(SphinxSearchService())

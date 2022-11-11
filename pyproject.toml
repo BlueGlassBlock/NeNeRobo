@@ -7,19 +7,16 @@ authors = [
 ]
 dependencies = [
     "graia-ariadne[standard]<0.11.0,>=0.10.0a2",
-    "kayaku>=0.5.0rc5",
+    "kayaku~=0.5.0",
     "githubkit[auth-oauth-device]~=0.9.0",
     "graiax-playwright>=0.2.0.post1",
     "rich>=12.5.1",
-    "jinja2>=3.1.2",
     "mdit-py-emoji>=0.1.0",
-    "humanize>=4.4.0",
-    "unidiff>=0.7.4",
     "markdown-it-py[linkify,plugins]>=2.1.0",
     "msgspec>=0.9.0",
     "graiax-shortcut>=0.1.0",
     "sphobjinv>=2.2.2",
-    "rapidfuzz>=2.12.0",
+    "aiosqlite~=0.17.0",
 ]
 requires-python = ">=3.10"
 license = {text = "AGPL-3.0"}
