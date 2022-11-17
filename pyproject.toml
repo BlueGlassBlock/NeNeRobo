@@ -6,11 +6,11 @@ authors = [
     {name = "BlueGlassBlock", email = "blueglassblock@outlook.com"},
 ]
 dependencies = [
-    "graia-ariadne[standard]<0.11.0,>=0.10.0a2",
+    "graia-ariadne>=0.10.0b1",
     "kayaku~=0.5.0",
     "githubkit[auth-oauth-device]~=0.9.0",
     "graiax-playwright>=0.2.0.post1",
-    "rich>=12.5.1",
+    "rich>=12.6.0",
     "mdit-py-emoji>=0.1.0",
     "markdown-it-py[linkify,plugins]>=2.1.0",
     "msgspec>=0.9.0",
