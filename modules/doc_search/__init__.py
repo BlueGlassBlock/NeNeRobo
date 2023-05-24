@@ -1,12 +1,12 @@
 from datetime import datetime
 from graia.saya import Channel
-from graia.ariadne.model import Friend, Member
-from graia.ariadne.message.element import Forward, ForwardNode, Image
-from graia.ariadne.event.message import MessageEvent
-from graia.ariadne.message.commander.saya import CommandSchema
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.commander import Arg
-from graia.ariadne import Ariadne
+from ichika.core import Member, Friend
+from ichika.client import Client
+from ichika.message.elements import ForwardMessage, MessageChain, Image
+from graiax.shortcut.commander import Arg
+from graiax.shortcut.commander.saya import CommandSchema
+from ichika.graia.event import MessageEvent
+from library.send_util import EventCtx, msg, forward_node
 from kayaku import create
 from .render import results_to_images
 
@@ -32,40 +32,41 @@ async def handle(
     total: int,
     max_height: int,
     event: MessageEvent,
-    app: Ariadne,
+    app: Client,
     interface: SearchInterface,
     sender: Member | Friend,
 ):
+    ctx = EventCtx(app, event)
     if total > 20:
-        return await app.send_message(event, f"{total} 条太多了，最多 20 条！")
+        return await ctx.send(f"{total} 条太多了，最多 20 条！")
     elif total < 1:
-        return await app.send_message(event, f"{total} 条这怎么搜")
+        return await ctx.send(f"{total} 条这怎么搜")
     if max_height not in range(500, 17500):
-        return await app.send_message(event, f"{max_height} 这个高度怎么想都不对劲吧")
+        return await ctx.send(f"{max_height} 这个高度怎么想都不对劲吧")
     result = await interface.search(parse_query(str(phrase)), total)
     images = await results_to_images(result, max_height)
-    return await app.send_message(
-        event,
+    forward_card = await ctx.upload_forward(
         [
-            Forward(
-                ForwardNode(
+            forward_node(
+                sender,
+                datetime.now(),
+                msg(f"共有 {len(result)} 条结果"),
+            ),
+            *(
+                forward_node(
                     sender,
                     datetime.now(),
-                    MessageChain(f"共有 {len(result)} 条结果"),
-                ),
-                (
-                    ForwardNode(
-                        sender,
-                        datetime.now(),
-                        MessageChain(
+                    msg(
+                        [
                             f"#{idx}: {res.name} ({res.role})\n{res.uri}\n",
-                            Image(data_bytes=data)
+                            Image.build(data)
                             if isinstance(data := images.pop(res.uri, -1), bytes)
                             else f"元素高度为 {data}，无法截图",
-                        ),
-                    )
-                    for idx, res in enumerate(result, 1)
-                ),
-            )
-        ],
+                        ]
+                    ),
+                )
+                for idx, res in enumerate(result, 1)
+            ),
+        ]
     )
+    await ctx.send(forward_card)

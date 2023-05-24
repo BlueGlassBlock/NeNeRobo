@@ -3,7 +3,8 @@ from dataclasses import field
 from graia.saya import Channel
 from graiax.shortcut import listen
 from kayaku import config, create
-from graia.ariadne.event.mirai import NewFriendRequestEvent
+from ichika.graia.event import NewFriendRequest
+from ichika.client import Client
 
 channel = Channel.current()
 
@@ -18,9 +19,9 @@ class FriendPolicy:
     """Reason of rejection"""
 
 
-@listen(NewFriendRequestEvent)
-async def handle_request(event: NewFriendRequestEvent):
+@listen(NewFriendRequest)
+async def handle_request(app: Client, event: NewFriendRequest):
     policy = create(FriendPolicy, flush=True)
-    if policy.accept_all or event.supplicant in policy.whitelist:
-        return await event.accept()
-    return await event.reject(policy.reason)
+    if policy.accept_all or event.uin in policy.whitelist:
+        return await app.process_new_friend_request(event.seq, event.uin, True)
+    return await app.process_new_friend_request(event.seq, event.uin, False)

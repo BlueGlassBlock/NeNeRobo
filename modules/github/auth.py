@@ -1,7 +1,6 @@
 import msgspec
 from githubkit import GitHub, TokenAuthStrategy
-from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import FriendMessage
+from library.send_util import EventCtx
 from kayaku import create
 
 SCOPES = ["gist", "project", "read:user", "repo", "write:discussion", "write:org"]
@@ -15,7 +14,7 @@ class DeviceCodeResp(msgspec.Struct):
     interval: int
 
 
-async def verify_auth(app: Ariadne, ev: FriendMessage, token: str) -> bool:
+async def verify_auth(ctx: EventCtx, token: str) -> bool:
     from . import MasterCredential
 
     async with GitHub(TokenAuthStrategy(token)) as gh:
@@ -25,11 +24,10 @@ async def verify_auth(app: Ariadne, ev: FriendMessage, token: str) -> bool:
                     await gh.rest.users.async_get_authenticated()
                 ).parsed_data.name
             except Exception:
-                await app.send_message(ev, f"Token 验证失败，重试：{i} / 3")
+                await ctx.send(f"Token 验证失败，重试：{i} / 3")
             else:
-                await app.send_message(ev, f"你已经为 {user_name} 安装过了！")
-                await app.send_message(
-                    ev,
+                await ctx.send(f"你已经为 {user_name} 安装过了！")
+                await ctx.send(
                     f"请在 https://github.com/settings/connections/applications/{create(MasterCredential).client_id} 管理！",
                 )
                 return True

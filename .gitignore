@@ -1,7 +1,8 @@
-.pdm.toml
+.pdm-python
 __pycache__/
 lib/
 test_loc/
 config/
 *.log
 *.db
+/data

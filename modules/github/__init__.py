@@ -7,13 +7,12 @@ from typing import Annotated
 
 import msgspec
 from graia.amnesia.builtins.aiohttp import AiohttpClientInterface
-from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import FriendMessage, GroupMessage
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At, Forward, ForwardNode, Image, Plain
-from graia.ariadne.message.parser.base import MatchContent, MatchRegex, RegexGroup
-from graia.ariadne.util.interrupt import AnnotationWaiter, EventWaiter
-from graia.ariadne.util.validator import CertainFriend, Quoting
+from ichika.client import Client
+from ichika.graia.event import FriendMessage, GroupMessage
+from ichika.message.elements import MessageChain, Image, Text
+from graiax.shortcut.text_parser import MatchContent, MatchRegex, RegexGroup
+from graiax.shortcut.interrupt import AnnotationWaiter
+from library.validator import CertainFriend, Quoting
 from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
 from graia.scheduler.saya import SchedulerSchema
@@ -23,6 +22,8 @@ from httpx import AsyncClient
 from kayaku import config, create
 from loguru import logger
 from msgspec.msgpack import decode, encode
+
+from library.send_util import EventCtx, forward_node, msg
 
 from .auth import SCOPES, DeviceCodeResp, verify_auth
 from .render import files_changed_image, format_event, link_to_image
@@ -73,66 +74,66 @@ WORD = r"[A-Za-z0-9_-]"
     )
 )
 async def render_link(
-    app: Ariadne,
+    app: Client,
     ev: GroupMessage | FriendMessage,
     owner_chain: Annotated[MessageChain, RegexGroup("owner")],
     repo_chain: Annotated[MessageChain, RegexGroup("repo")],
     issue_number: Annotated[MessageChain, RegexGroup("number")],
     gh: GitHub,
 ):
-    owner, repo, number = owner_chain.display, repo_chain.display, issue_number.display
+    owner, repo, number = map(str, (owner_chain, repo_chain, issue_number))
+    ctx = EventCtx(app, ev)
 
     try:
         issue_prop_pull_request = (
             await gh.rest.issues.async_get(owner, repo, int(number))
         ).parsed_data.pull_request
     except Exception as e:
-        return await app.send_message(ev, f"验证 Issue 失败：{repr(e)}", quote=ev.source)
+        return await ctx.send([ctx.as_reply, f"验证 Issue 失败：{repr(e)}"])
 
     try:
-        msg = await app.send_message(
-            ev,
-            Image(
-                data_bytes=await link_to_image(
-                    f"https://github.com/{owner}/{repo}/issues/{number}"
-                )
-            ),
-            quote=ev.source,
+        receipt = await ctx.send(
+            [
+                ctx.as_reply,
+                Image.build(
+                    await link_to_image(
+                        f"https://github.com/{owner}/{repo}/issues/{number}"
+                    )
+                ),
+            ]
         )
     except TimeoutError:
-        return await app.send_message(ev, "Timeout in 80000ms!", quote=ev.source)
+        return await ctx.send([ctx.as_reply, "Timeout in 80000ms!"])
 
     if not issue_prop_pull_request:
         return
 
-    waiter = AnnotationWaiter(MessageChain, [type(ev)], decorator=Quoting(msg))
+    waiter = AnnotationWaiter(MessageChain, [type(ev)], decorator=Quoting(receipt))
 
     while True:
         cmd = await waiter.wait(60)
 
         if cmd is None:
             return
-        elif str(cmd.include(Plain)).strip() == "diff":
+        elif str(cmd.include(Text)).strip() == "diff":
             break
 
     try:
-        await app.send_message(
-            ev,
-            Forward(
-                [
-                    ForwardNode(
-                        ev.sender,
-                        datetime.now(),
-                        MessageChain(Image(data_bytes=image)),
-                    )
-                    for image in await files_changed_image(
-                        f"https://github.com/{owner}/{repo}/pull/{number}/files"
-                    )
-                ]
-            ),
+        card = await ctx.upload_forward(
+            [
+                forward_node(
+                    ev.sender,
+                    datetime.now(),
+                    msg(Image.build(image)),
+                )
+                for image in await files_changed_image(
+                    f"https://github.com/{owner}/{repo}/pull/{number}/files"
+                )
+            ]
         )
+        await ctx.send(card)
     except TimeoutError:
-        await app.send_message(ev, "Timeout in 80000ms!", quote=ev.source)
+        return await ctx.send([ctx.as_reply, "Timeout in 80000ms!"])
 
 
 @channel.use(
@@ -147,14 +148,15 @@ async def render_link(
     )
 )
 async def render_open_graph(
-    app: Ariadne,
+    app: Client,
     ev: GroupMessage | FriendMessage,
     owner_chain: Annotated[MessageChain, RegexGroup("owner")],
     repo_chain: Annotated[MessageChain, RegexGroup("repo")],
     client: AiohttpClientInterface,
     gh: GitHub,
 ):
-    owner, repo = owner_chain.display, repo_chain.display
+    owner, repo = map(str, (owner_chain, repo_chain))
+    ctx = EventCtx(app, ev)
     try:
         await gh.rest.repos.async_get(owner, repo)
     except Exception as e:
@@ -171,16 +173,13 @@ async def render_open_graph(
             .io()
             .read()
         )
-        return await app.send_message(ev, Image(data_bytes=pic))
+        return await ctx.send(Image.build(pic))
     except Exception as e:
-        return await app.send_message(ev, f"拉取 OpenGraph 失败：{repr(e)}", quote=ev.source)
+        return await ctx.send([ctx.as_reply, f"拉取 OpenGraph 失败：{repr(e)}"])
 
 
 @channel.use(SchedulerSchema(every_custom_seconds(5)))
-async def update_stat(app: Ariadne):
-    if app.launch_manager.status.preparing:
-        return
-    gh = app.launch_manager.get_interface(GitHub)
+async def update_stat(app: Client, gh: GitHub):
     groups: list[int] = create(OrgMonitor).groups
     for events in gh.polls.values():
         while events and (ev := events.popleft()):
@@ -188,7 +187,7 @@ async def update_stat(app: Ariadne):
             logger.debug(repr(ev))
             if formatted := format_event(ev):
                 for g in groups:
-                    await app.send_group_message(g, formatted)
+                    await app.send_group_message(g, msg(formatted))
 
 
 DB = Path(__file__, "..", "tokens.db").resolve()
@@ -196,10 +195,12 @@ DB = Path(__file__, "..", "tokens.db").resolve()
 
 @listen(FriendMessage)
 @decorate(MatchContent(".auth"))
-async def gh_auth(app: Ariadne, ev: FriendMessage):
+async def gh_auth(app: Client, ev: FriendMessage):
     from . import MasterCredential
 
-    user_id: str = str(ev.sender.id)
+    ctx = EventCtx(app, ev)
+
+    user_id: str = str(ev.sender.uin)
     DB.touch(exist_ok=True)
     data = DB.read_bytes() or encode({})
     db: dict[str, str] = decode(data, type=dict[str, str])
@@ -207,11 +208,11 @@ async def gh_auth(app: Ariadne, ev: FriendMessage):
         # validates token
 
         token = db[user_id]
-        if await verify_auth(app, ev, token):
+        if await verify_auth(ctx, token):
             return
         del db[user_id]
         DB.write_bytes(encode(db))
-        await app.send_message(ev, "授权似乎失效了，正在重新授权...")
+        await ctx.send("授权似乎失效了，正在重新授权...")
 
     async with AsyncClient(headers={"Accept": "application/json"}) as client:
         resp: DeviceCodeResp = msgspec.json.decode(
@@ -226,8 +227,7 @@ async def gh_auth(app: Ariadne, ev: FriendMessage):
             ).content,
             type=DeviceCodeResp,
         )
-        await app.send_message(
-            ev,
+        await ctx.send(
             f"请在 {resp.verification_uri}\n"
             f"输入 {resp.user_code} 进行授权！\n"
             "完成后请发送 `.auth` 继续",
@@ -245,9 +245,9 @@ async def gh_auth(app: Ariadne, ev: FriendMessage):
                         },
                     )
                 ).json()["access_token"]
-                if await verify_auth(app, ev, token):
+                if await verify_auth(ctx, token):
                     return token
-            await app.send_message(ev, "授权失败，请重新授权！")
+            await ctx.send("授权失败，请重新授权！")
             return ""
 
         token = await FunctionWaiter(
@@ -257,7 +257,7 @@ async def gh_auth(app: Ariadne, ev: FriendMessage):
             block_propagation=True,
         ).wait(timeout=90, default=None)
         if not token:
-            return await app.send_message(ev, "授权超时，请重新授权！")
+            return await ctx.send("授权超时，请重新授权！")
         db: dict[str, str] = decode(DB.read_bytes() or encode({}), type=dict[str, str])
         db[user_id] = token
         DB.write_bytes(encode(db))

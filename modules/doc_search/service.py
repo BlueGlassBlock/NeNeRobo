@@ -40,7 +40,7 @@ class SearchInterface(ExportInterface):
         for db_name_js in self.service.config.inventory_urls:
             async for row in await self.conn.execute(
                 f"SELECT rank, role, name, uri FROM {str(db_name_js)!r}(?)"
-                f" ORDER BY rank LIMIT ?",
+                f" ORDER BY rank LIMIT ?;",
                 (query, total),
             ):
                 results.append(SearchResult(*row))
@@ -78,7 +78,7 @@ class SphinxSearchService(Service):
 
     @property
     def required(self):
-        return set()
+        return {"ichika.main"}
 
     def get_interface(self, _):
         return SearchInterface(self)
@@ -93,7 +93,7 @@ class SphinxSearchService(Service):
             if dct["domain"] in self.config.domains:
                 tsk = asyncio.create_task(
                     self.connection.execute(
-                        f"INSERT INTO {url!r} VALUES (:name, :domain, :role, :uri)",
+                        f"INSERT INTO {url!r} VALUES (:name, :domain, :role, :uri);",
                         dct,
                     )
                 )
@@ -117,22 +117,22 @@ class SphinxSearchService(Service):
         rows = list(
             await (
                 await self.connection.execute(
-                    "SELECT * FROM hashes WHERE uri = ?", (url,)
+                    "SELECT * FROM hashes WHERE uri = ?;", (url,)
                 )
             ).fetchall()
         )
         if not rows:
             await self.connection.execute(
-                "INSERT INTO hashes(uri, value) VALUES (?, ?)",
+                "INSERT INTO hashes(uri, value) VALUES (?, ?);",
                 (url, -1),
             )
         elif rows[0][1] == file_hash:
             logger.debug(f"{url}'s object data is already up to date, skipping")
             return
         logger.debug(f"Remove and recreate table {url}")
-        await self.connection.execute(f"DROP TABLE IF EXISTS {url!r}")
+        await self.connection.execute(f"DROP TABLE IF EXISTS {url!r};")
         await self.connection.execute(
-            f"CREATE VIRTUAL TABLE {url!r} USING FTS5(name, domain UNINDEXED, role UNINDEXED, uri UNINDEXED)"
+            f"CREATE VIRTUAL TABLE {url!r} USING FTS5(name, domain UNINDEXED, role UNINDEXED, uri UNINDEXED);"
         )
         inv = Inventory(sph_decompress(data))  # type: ignore
         await self.write_table(url, inv)
