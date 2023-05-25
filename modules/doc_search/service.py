@@ -2,6 +2,7 @@ import asyncio
 from sphobjinv.inventory import Inventory
 from dataclasses import field
 from pathlib import Path
+from library.storage import dir
 
 from graia.saya import Channel
 from httpx import AsyncClient
@@ -48,8 +49,7 @@ class SearchInterface(ExportInterface):
         return results[:total]
 
 
-DB = Path(__file__, "..", "objects.db").resolve()
-
+DB = dir("doc_search") / "objects.db"
 DB.touch(exist_ok=True)
 
 

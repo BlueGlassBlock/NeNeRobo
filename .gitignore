@@ -3,6 +3,5 @@ __pycache__/
 lib/
 test_loc/
 config/
-*.log
-*.db
 /data
+logs/

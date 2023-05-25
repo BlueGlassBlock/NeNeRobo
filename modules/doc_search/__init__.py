@@ -2,7 +2,7 @@ from datetime import datetime
 from graia.saya import Channel
 from ichika.core import Member, Friend
 from ichika.client import Client
-from ichika.message.elements import ForwardMessage, MessageChain, Image
+from ichika.message.elements import MessageChain, Image
 from graiax.shortcut.commander import Arg
 from graiax.shortcut.commander.saya import CommandSchema
 from ichika.graia.event import MessageEvent

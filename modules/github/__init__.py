@@ -23,6 +23,7 @@ from kayaku import config, create
 from loguru import logger
 from msgspec.msgpack import decode, encode
 
+from library.storage import dir
 from library.send_util import EventCtx, forward_node, msg
 
 from .auth import SCOPES, DeviceCodeResp, verify_auth
@@ -190,7 +191,8 @@ async def update_stat(app: Client, gh: GitHub):
                     await app.send_group_message(g, msg(formatted))
 
 
-DB = Path(__file__, "..", "tokens.db").resolve()
+DB = dir("github") / "objects.db"
+DB.touch(exist_ok=True)
 
 
 @listen(FriendMessage)

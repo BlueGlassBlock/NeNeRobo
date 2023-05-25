@@ -60,6 +60,8 @@ if __name__ == "__main__":
     with saya.module_context():
         for module_info in pkgutil.iter_modules(["modules"]):
             channel = saya.require(f"modules.{module_info.name}")
+        for module_info in pkgutil.iter_modules(["local"]):
+            saya.require(f"local.{module_info.name}")
 
     @kayaku.config("account.credential")
     class IchikaCredential:
