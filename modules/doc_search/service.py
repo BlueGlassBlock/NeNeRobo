@@ -1,22 +1,22 @@
 import asyncio
-from sphobjinv.inventory import Inventory
-from dataclasses import field
-from pathlib import Path
-from library.storage import dir
+from dataclasses import dataclass, field
+import sqlite3
+from zlib import adler32
 
+import aiosqlite
+from aiosqlite import Connection
 from graia.saya import Channel
 from httpx import AsyncClient
 from kayaku import config, create
 from launart import ExportInterface, Service
 from launart.saya import LaunchableSchema
 from loguru import logger
-from yarl import URL
-import aiosqlite
-from aiosqlite import Connection
-from zlib import adler32
+from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn, TimeElapsedColumn
+from sphobjinv.inventory import Inventory
 from sphobjinv.zlib import decompress as sph_decompress
-from rich.progress import Progress, SpinnerColumn, MofNCompleteColumn, TimeElapsedColumn
-from dataclasses import dataclass
+from yarl import URL
+
+from library.storage import dir
 
 channel = Channel.current()
 
@@ -83,22 +83,9 @@ class SphinxSearchService(Service):
     def get_interface(self, _):
         return SearchInterface(self)
 
-    async def write_table(self, url: str, inv: Inventory) -> None:
+    def write_table(self, conn: sqlite3.Connection, url: str, inv: Inventory) -> None:
         head_uri = f"{str(URL(url).parent)}/"
         logger.info(f"Traversing {len(inv.objects)} entries of {url}")
-        tasks: list[asyncio.Task] = []
-        for d in inv.objects:
-            dct = d.json_dict(expand=True)
-            dct["uri"] = head_uri + dct["uri"]
-            if dct["domain"] in self.config.domains:
-                tsk = asyncio.create_task(
-                    self.connection.execute(
-                        f"INSERT INTO {url!r} VALUES (:name, :domain, :role, :uri);",
-                        dct,
-                    )
-                )
-                tasks.append(tsk)
-
         with Progress(
             SpinnerColumn(),
             *Progress.get_default_columns(),
@@ -106,23 +93,28 @@ class SphinxSearchService(Service):
             MofNCompleteColumn(),
         ) as prog:
             tid = prog.add_task(
-                f"[cyan]Writing {len(tasks)} entries into database[/]", total=len(tasks)
+                f"[cyan]Writing {len(inv.objects)} entries into database[/]",
+                total=len(inv.objects),
             )
-            for t in tasks:
-                t.add_done_callback(lambda _: prog.advance(tid))
-            await asyncio.wait(tasks)
+            for d in inv.objects:
+                dct = d.json_dict(expand=True)
+                dct["uri"] = head_uri + dct["uri"]
+                if dct["domain"] in self.config.domains:
+                    conn.execute(
+                        f"INSERT INTO {url!r} VALUES (:name, :domain, :role, :uri);",
+                        dct,
+                    )
+                prog.advance(tid)
 
-    async def update_objects_data(self, url: str, data: bytes) -> None:
+    def update_objects_data(
+        self, conn: sqlite3.Connection, url: str, data: bytes
+    ) -> None:
         file_hash = adler32(data)
         rows = list(
-            await (
-                await self.connection.execute(
-                    "SELECT * FROM hashes WHERE uri = ?;", (url,)
-                )
-            ).fetchall()
+            conn.execute("SELECT * FROM hashes WHERE uri = ?;", (url,)).fetchall()
         )
         if not rows:
-            await self.connection.execute(
+            conn.execute(
                 "INSERT INTO hashes(uri, value) VALUES (?, ?);",
                 (url, -1),
             )
@@ -130,41 +122,46 @@ class SphinxSearchService(Service):
             logger.debug(f"{url}'s object data is already up to date, skipping")
             return
         logger.debug(f"Remove and recreate table {url}")
-        await self.connection.execute(f"DROP TABLE IF EXISTS {url!r};")
-        await self.connection.execute(
+        conn.execute(f"DROP TABLE IF EXISTS {url!r};")
+        conn.execute(
             f"CREATE VIRTUAL TABLE {url!r} USING FTS5(name, domain UNINDEXED, role UNINDEXED, uri UNINDEXED);"
         )
         inv = Inventory(sph_decompress(data))  # type: ignore
-        await self.write_table(url, inv)
+        self.write_table(conn, url, inv)
         logger.debug(f"Updating {url}'s file hash")
-        await self.connection.execute(
+        conn.execute(
             "REPLACE INTO hashes VALUES(?, ?)",
             (url, file_hash),
         )
 
     async def launch(self, _):
-        async with aiosqlite.connect(DB, isolation_level=None) as connection:
-            self.connection = connection
-            async with self.stage("preparing"):
-                self.config = conf = create(SphinxSearchConfig)
-                await self.connection.execute(
-                    "CREATE TABLE IF NOT EXISTS hashes(uri PRIMARY KEY, value);"
-                )
-                async with AsyncClient() as client:
-                    for url in conf.inventory_urls:
-                        url = str(url)  # Convert JString
-                        data = None
-                        while data is None:
-                            try:
-                                data = (await client.get(url)).content
-                            except Exception as e:
-                                logger.error(f"Error fetching {url}: {e!r}, retrying")
-                                await asyncio.sleep(0.5)
-                        logger.debug(f"Fetched objects.inv from {url}")
-                        await self.update_objects_data(url, data)
+        async with self.stage("preparing"):
+            self.config = conf = create(SphinxSearchConfig)
+            conn = sqlite3.connect(DB, isolation_level=None)
+            conn.execute("CREATE TABLE IF NOT EXISTS hashes(uri PRIMARY KEY, value);")
+            conn.execute("CREATE TABLE IF NOT EXISTS hashes(uri PRIMARY KEY, value);")
+            data_map: dict[str, bytes] = {}
+            async with AsyncClient() as client:
+                for url in conf.inventory_urls:
+                    url = str(url)  # Convert JString
+                    data = None
+                    while data is None:
+                        try:
+                            data = (await client.get(url)).content
+                        except Exception as e:
+                            logger.error(f"Error fetching {url}: {e!r}, retrying")
+                            await asyncio.sleep(0.5)
+                    logger.debug(f"Fetched objects.inv from {url}")
+                    data_map[url] = data
+            for url, data in data_map.items():
+                self.update_objects_data(conn, url, data)
+            conn.close()
 
-            async with self.stage("cleanup"):
-                ...
+            self.connection_mgr = aiosqlite.connect(DB, isolation_level=None)
+            self.connection = await self.connection_mgr.__aenter__()
+
+        async with self.stage("cleanup"):
+            await self.connection_mgr.__aexit__(None, None, None)
 
 
 channel.use(LaunchableSchema())(SphinxSearchService())

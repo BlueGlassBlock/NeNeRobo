@@ -1,5 +1,7 @@
-from library.render import get_page
 from yarl import URL
+
+from library.render import get_page
+
 from .service import SearchResult
 
 

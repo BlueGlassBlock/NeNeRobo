@@ -2,9 +2,9 @@ from dataclasses import field
 
 from graia.saya import Channel
 from graiax.shortcut import listen
-from kayaku import config, create
-from ichika.graia.event import NewFriendRequest
 from ichika.client import Client
+from ichika.graia.event import NewFriendRequest
+from kayaku import config, create
 
 channel = Channel.current()
 

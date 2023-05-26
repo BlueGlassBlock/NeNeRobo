@@ -1,7 +1,8 @@
 import msgspec
 from githubkit import GitHub, TokenAuthStrategy
-from library.send_util import EventCtx
 from kayaku import create
+
+from library.send_util import EventCtx
 
 SCOPES = ["gist", "project", "read:user", "repo", "write:discussion", "write:org"]
 
